@@ -1,0 +1,23 @@
+:root{color-scheme:light dark;accent-color:var(--accent);--bg:#f6f7f8;--card:#fff;--ink:#1c2329;--soft:#5d6973;--line:#d9dfe3;--accent:#0b6e69;--on:#fff;--grid:#e8ecef;--wild:#8a5300;--bad:#b3261e;
+--roll:#fff;--roll-dark:#f1f4f5;--roll-out:#e6eaec;--roll-line:#e3e8eb;--roll-beat:#cbd4d9;--roll-bar:#93a1aa;--note:#0b6e69;--note-sel:#d9730d;--ghost:#b9c4ca;--key-b:#39444c;--key-w:#fff;--key-ink:#5d6973;--play:#c2185b}
+@media (prefers-color-scheme:dark){:root{--bg:#14181b;--card:#1d2327;--ink:#e6eaed;--soft:#9aa7b0;--line:#333c42;--accent:#4fc3ba;--on:#08211f;--grid:#2a3237;--wild:#e8ae5c;--bad:#ff8a80;
+--roll:#1a1f23;--roll-dark:#161b1e;--roll-out:#111517;--roll-line:#252c31;--roll-beat:#333c42;--roll-bar:#55626b;--note:#4fc3ba;--note-sel:#ffb04d;--ghost:#3f4b52;--key-b:#0e1113;--key-w:#c9d1d6;--key-ink:#333c42;--play:#ff6fa5}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,sans-serif}
+h1{font-size:17px;margin:0}h2{font-size:15px;margin:0 0 10px}
+header.app{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;padding:8px 14px;background:var(--card);border-bottom:1px solid var(--line)}
+header.app nav{display:flex;gap:4px}
+header.app nav a{padding:4px 10px;border-radius:4px;color:var(--soft);text-decoration:none}
+header.app nav a[aria-current]{background:var(--accent);color:var(--on)}
+.row{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}.row.end{justify-content:flex-end;margin-top:14px}
+input,select,textarea,button{font:inherit;color:inherit;background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:4px 8px}
+input[type=range]{padding:0;vertical-align:middle}
+button{cursor:pointer;padding:4px 10px}button:hover:not(:disabled){border-color:var(--accent)}button:disabled{opacity:.45;cursor:default}
+button.primary,button[aria-pressed=true]{background:var(--accent);color:var(--on);border-color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.soft{color:var(--soft)}
+dialog{color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:18px;max-width:min(760px,94vw);max-height:88vh;overflow:auto}
+dialog::backdrop{background:#0007}
+dialog.ask{width:min(420px,92vw)}dialog.ask p{margin:0 0 10px;white-space:pre-line}dialog.ask input{width:100%}
+#toast{position:fixed;inset:auto auto 24px 50%;transform:translateX(-50%);margin:0;padding:8px 16px;border:0;border-radius:6px;background:var(--ink);color:var(--card);max-width:90vw}
+#toast.bad{background:var(--bad);color:var(--card)}

@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tunelab Tune Generator</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/web/shared/base.css">
+<link rel="stylesheet" href="/web/generator/generator.css">
+</head>
+<body>
+<header class="app">
+  <h1>Tunelab</h1>
+  <nav><a href="/daw">DAW</a><a href="/generator" aria-current="page">Tune Generator</a></nav>
+  <span class="grow"></span>
+  <div class="player">
+    <label>Sound <select id="wave"><option>triangle</option><option>sine</option><option>square</option><option>sawtooth</option></select></label>
+    <label><input type="checkbox" id="chords" checked> Chords</label>
+    <label>Volume <input type="range" id="vol" min="0" max="1" step="0.01" value="0.6"></label>
+    <button id="stop" disabled>Stop</button>
+  </div>
+</header>
+<main>
+  <section class="side">
+    <form id="gen">
+      <h2>Generate</h2>
+      <label>How many <input type="number" name="count" min="1" max="5000" value="300" required></label>
+      <label>Scale <select name="mode"><option value="any">any</option><option value="maj">major</option><option value="min">natural minor</option><option value="hmin">harmonic minor</option></select></label>
+      <label>Meter <select name="meter"><option>4/4</option><option>3/4</option></select></label>
+      <label>Bars <select name="bars"><option>4</option><option selected>8</option><option>16</option></select></label>
+      <label>Flag the top % <input type="number" name="top_percent" min="0.1" max="100" step="0.1" value="3" required></label>
+      <button class="primary">Generate</button>
+      <p id="gen-msg" class="msg" role="status"></p>
+    </form>
+    <form id="typed">
+      <h2>Score a melody</h2>
+      <textarea name="notation" rows="6" spellcheck="false" aria-label="Melody notation">key=A:min bpm=100 meter=4/4
+[Am] A4:1 C5:1/2 E5:1/2 D5:3/2 C5:1/2 | [F] A4:1 -:1 C5:2 | [G] B4:1 D5:1 C5:1 B4:1 | [Am] A4:4 |</textarea>
+      <label>Name <input name="name" maxlength="200"></label>
+      <div class="row"><button name="act" value="score">Score</button><button name="act" value="save">Score and save</button></div>
+      <p id="typed-msg" class="msg" role="status"></p>
+    </form>
+  </section>
+  <section class="list">
+    <nav id="tabs">
+      <button data-show="flagged" aria-pressed="true">Flagged</button>
+      <button data-show="all" aria-pressed="false">All generated</button>
+      <button data-show="imported" aria-pressed="false">Imported</button>
+      <label><input type="checkbox" id="latest"> Latest batch only</label>
+    </nav>
+    <div id="preview"></div>
+    <div id="tunes"></div>
+  </section>
+</main>
+<script type="module" src="/web/generator/generator.js"></script>
+</body>
+</html>

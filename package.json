@@ -1,0 +1,16 @@
+{
+  "name": "tunelab-web",
+  "private": true,
+  "type": "module",
+  "description": "Only used to fetch browser libraries into web/vendor and to run JS unit tests. Not needed to run Tunelab.",
+  "scripts": {
+    "vendor": "node scripts/vendor.mjs",
+    "test": "node --test tests/js/*.test.js"
+  },
+  "devDependencies": {
+    "@tonejs/midi": "2.0.28",
+    "konva": "10.10.0",
+    "tinykeys": "4.0.1",
+    "tone": "15.1.22"
+  }
+}

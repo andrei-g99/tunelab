@@ -1,0 +1,121 @@
+// Playback with Tone.js. One synth per track; the Tone transport counts in our ticks.
+/* global Tone */
+import { PPQ, projectEnd } from "./model.js";
+
+const SYNTHS = {
+  soft: () => new Tone.PolySynth(Tone.Synth, { oscillator: { type: "triangle" }, envelope: { attack: 0.01, decay: 0.2, sustain: 0.5, release: 0.15 } }),
+  sine: () => new Tone.PolySynth(Tone.Synth, { oscillator: { type: "sine" }, envelope: { attack: 0.02, decay: 0.1, sustain: 0.7, release: 0.2 } }),
+  square: () => new Tone.PolySynth(Tone.Synth, { oscillator: { type: "square" }, envelope: { attack: 0.005, decay: 0.15, sustain: 0.4, release: 0.1 }, volume: -10 }),
+  saw: () => new Tone.PolySynth(Tone.Synth, { oscillator: { type: "sawtooth" }, envelope: { attack: 0.01, decay: 0.2, sustain: 0.4, release: 0.12 }, volume: -10 }),
+  epiano: () => new Tone.PolySynth(Tone.FMSynth, { harmonicity: 2, modulationIndex: 4, envelope: { attack: 0.005, decay: 0.6, sustain: 0.2, release: 0.3 } }),
+  bell: () => new Tone.PolySynth(Tone.FMSynth, { harmonicity: 3.5, modulationIndex: 8, envelope: { attack: 0.002, decay: 1.2, sustain: 0, release: 0.6 } }),
+};
+const freq = (p) => 440 * 2 ** ((p - 69) / 12);
+
+export function createPlayer({ store, onFrame, onState }) {
+  const transport = Tone.getTransport();
+  transport.PPQ = PPQ;
+  const limiter = new Tone.Limiter(-1).toDestination();
+  const voices = new Map(); // track id -> {sound, synth}
+  let project = null, raf = 0, position = 0, generation = 0;
+  // our own flag: the transport starts slightly in the future, so its state lags behind
+  let active = false;
+  const playing = () => active;
+
+  function syncVoices(p) {
+    const solo = p.tracks.some((t) => t.solo);
+    const alive = new Set();
+    for (const t of p.tracks) {
+      alive.add(t.id);
+      let v = voices.get(t.id);
+      if (v && v.sound !== t.sound) { drop(t.id); v = null; }
+      if (!v) {
+        const gain = new Tone.Volume(0).connect(limiter);
+        const synth = SYNTHS[t.sound]().connect(gain);
+        synth.maxPolyphony = 64;
+        voices.set(t.id, (v = { sound: t.sound, synth, gain }));
+      }
+      v.gain.volume.value = t.volume;
+      v.gain.mute = t.muted || (solo && !t.solo);
+    }
+    for (const id of [...voices.keys()]) if (!alive.has(id)) drop(id);
+  }
+  function drop(id) {
+    const { synth, gain } = voices.get(id);
+    voices.delete(id);
+    synth.releaseAll();
+    setTimeout(() => { synth.dispose(); gain.dispose(); }, 1500);
+  }
+  function schedule(p) {
+    transport.cancel(0);
+    const perTick = 60 / p.bpm / PPQ;
+    for (const t of p.tracks) for (const n of t.notes) {
+      transport.schedule((time) => {
+        voices.get(t.id)?.synth.triggerAttackRelease(freq(n.pitch), Math.max(0.02, n.dur * perTick), time, n.vel / 127);
+      }, `${n.start}i`);
+    }
+  }
+  /** Call whenever the project changes; safe while playing. */
+  function update(p) {
+    if (p === project) return;
+    const notesChanged = !project || p.bpm !== project.bpm || p.tracks.length !== project.tracks.length
+      || p.tracks.some((t, i) => t.notes !== project.tracks[i].notes || t.id !== project.tracks[i].id);
+    project = p;
+    if (!playing()) return;
+    syncVoices(p);
+    transport.bpm.value = p.bpm;
+    if (notesChanged) schedule(p);
+  }
+  function hush() { for (const { synth } of voices.values()) synth.releaseAll(); }
+
+  function frame() {
+    if (!playing()) return;
+    if (transport.state === "started") position = transport.ticks; // else: not begun yet
+    if (position >= Math.max(1, projectEnd(project))) { halt(0); return; }
+    onFrame(position);
+    raf = requestAnimationFrame(frame);
+  }
+  function halt(at) {
+    generation++;
+    active = false;
+    cancelAnimationFrame(raf);
+    transport.stop();
+    transport.cancel(0);
+    hush();
+    position = at;
+    onFrame(at);
+    onState(false);
+  }
+  async function play() {
+    const mine = ++generation;
+    await Tone.start();
+    if (mine !== generation || playing()) return; // stopped or restarted meanwhile
+    project = store.state.project;
+    const end = projectEnd(project);
+    if (!end) return;
+    if (position >= end) position = 0;
+    syncVoices(project);
+    transport.bpm.value = project.bpm;
+    schedule(project);
+    transport.start("+0.05", `${position}i`);
+    active = true;
+    onState(true);
+    raf = requestAnimationFrame(frame);
+  }
+  return {
+    playing, update,
+    toggle: () => (playing() ? halt(Math.round(transport.ticks)) : play()),
+    stop: () => halt(0),
+    position: () => Math.round(position),
+    seek(tick) {
+      position = tick;
+      if (playing()) { hush(); transport.ticks = tick; }
+      onFrame(tick);
+    },
+    async preview(trackId, pitch, vel, secs) {
+      await Tone.start();
+      syncVoices(store.state.project);
+      voices.get(trackId)?.synth.triggerAttackRelease(freq(pitch), secs, Tone.now(), vel / 127);
+    },
+  };
+}

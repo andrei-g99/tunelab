@@ -1,0 +1,70 @@
+# Public-domain melodies encoded by hand. "dev" tunes may be used to tune the scorer;
+# "holdout" tunes may only be used to test it.
+== dev: Ode to Joy
+key=C:maj bpm=110 meter=4/4
+E4:1 E4:1 F4:1 G4:1 | G4:1 F4:1 E4:1 D4:1 | C4:1 C4:1 D4:1 E4:1 | E4:3/2 D4:1/2 D4:2 |
+E4:1 E4:1 F4:1 G4:1 | G4:1 F4:1 E4:1 D4:1 | C4:1 C4:1 D4:1 E4:1 | D4:3/2 C4:1/2 C4:2 |
+== dev: Twinkle Twinkle
+key=C:maj bpm=100 meter=4/4
+C4:1 C4:1 G4:1 G4:1 | A4:1 A4:1 G4:2 | F4:1 F4:1 E4:1 E4:1 | D4:1 D4:1 C4:2 |
+G4:1 G4:1 F4:1 F4:1 | E4:1 E4:1 D4:2 | G4:1 G4:1 F4:1 F4:1 | E4:1 E4:1 D4:2 |
+C4:1 C4:1 G4:1 G4:1 | A4:1 A4:1 G4:2 | F4:1 F4:1 E4:1 E4:1 | D4:1 D4:1 C4:2 |
+== dev: Frere Jacques
+key=C:maj bpm=110 meter=4/4
+C4:1 D4:1 E4:1 C4:1 | C4:1 D4:1 E4:1 C4:1 | E4:1 F4:1 G4:2 | E4:1 F4:1 G4:2 |
+G4:1/2 A4:1/2 G4:1/2 F4:1/2 E4:1 C4:1 | G4:1/2 A4:1/2 G4:1/2 F4:1/2 E4:1 C4:1 | C4:1 G3:1 C4:2 | C4:1 G3:1 C4:2 |
+== dev: Greensleeves
+key=A:hmin bpm=90 meter=6/8 pickup=1/2
+A4:1/2 | C5:1 D5:1/2 E5:3/4 F5:1/4 E5:1/2 | D5:1 B4:1/2 G4:3/4 A4:1/4 B4:1/2 |
+C5:1 A4:1/2 A4:3/4 G#4:1/4 A4:1/2 | B4:1 G#4:1/2 E4:1 A4:1/2 |
+C5:1 D5:1/2 E5:3/4 F5:1/4 E5:1/2 | D5:1 B4:1/2 G4:3/4 A4:1/4 B4:1/2 |
+C5:3/4 B4:1/4 A4:1/2 G#4:3/4 F#4:1/4 G#4:1/2 | A4:3 |
+== dev: Auld Lang Syne
+key=G:maj bpm=100 meter=4/4 pickup=1
+D4:1 | G4:3/2 G4:1/2 G4:1 B4:1 | A4:3/2 G4:1/2 A4:1 B4:1 | G4:3/2 G4:1/2 B4:1 D5:1 | E5:3 E5:1 |
+D5:3/2 B4:1/2 B4:1 G4:1 | A4:3/2 G4:1/2 A4:1 B4:1 | G4:3/2 E4:1/2 E4:1 D4:1 | G4:3
+== dev: Korobeiniki
+key=A:min bpm=130 meter=4/4
+E5:1 B4:1/2 C5:1/2 D5:1 C5:1/2 B4:1/2 | A4:1 A4:1/2 C5:1/2 E5:1 D5:1/2 C5:1/2 |
+B4:3/2 C5:1/2 D5:1 E5:1 | C5:1 A4:1 A4:2 |
+-:1/2 D5:1 F5:1/2 A5:1 G5:1/2 F5:1/2 | E5:3/2 C5:1/2 E5:1 D5:1/2 C5:1/2 |
+B4:3/2 C5:1/2 D5:1 E5:1 | C5:1 A4:1 A4:2 |
+== dev: Scarborough Fair
+key=A:min bpm=110 meter=3/4
+A4:2 A4:1 | E5:2 E5:1 | B4:3/2 C5:1/2 B4:1 | A4:3 | -:1 E5:1 G5:1 | A5:2 G5:1 | E5:1 F#5:1 D5:1 | E5:3 |
+== dev: Yankee Doodle
+key=G:maj bpm=120 meter=4/4
+G4:1 G4:1 A4:1 B4:1 | G4:1 B4:1 A4:1 D4:1 | G4:1 G4:1 A4:1 B4:1 | G4:2 F#4:1 D4:1 |
+G4:1 G4:1 A4:1 B4:1 | C5:1 B4:1 A4:1 G4:1 | F#4:1 D4:1 E4:1 F#4:1 | G4:2 G4:2 |
+== holdout: Amazing Grace
+key=G:maj bpm=90 meter=3/4 pickup=1
+D4:1 | G4:2 B4:1/2 G4:1/2 | B4:2 A4:1 | G4:2 E4:1 | D4:2 D4:1 | G4:2 B4:1/2 G4:1/2 | B4:2 A4:1 | D5:3 | -:2 B4:1 |
+D5:2 B4:1/2 G4:1/2 | B4:2 A4:1 | G4:2 E4:1 | D4:2 D4:1 | G4:2 B4:1/2 G4:1/2 | B4:2 A4:1 | G4:3 |
+== holdout: Jingle Bells
+key=G:maj bpm=120 meter=4/4
+B4:1 B4:1 B4:2 | B4:1 B4:1 B4:2 | B4:1 D5:1 G4:3/2 A4:1/2 | B4:4 |
+C5:1 C5:1 C5:3/2 C5:1/2 | C5:1 B4:1 B4:1 B4:1/2 B4:1/2 | D5:1 D5:1 C5:1 A4:1 | G4:4 |
+== holdout: God Rest Ye Merry Gentlemen
+key=E:min bpm=120 meter=4/4 pickup=1
+E4:1 | E4:1 B4:1 B4:1 A4:1 | G4:1 F#4:1 E4:1 D4:1 | E4:1 F#4:1 G4:1 A4:1 | B4:3 E4:1 |
+E4:1 B4:1 B4:1 A4:1 | G4:1 F#4:1 E4:1 D4:1 | E4:1 F#4:1 G4:1 A4:1 | B4:3
+== holdout: Silent Night
+key=C:maj bpm=80 meter=6/8
+G4:3/4 A4:1/4 G4:1/2 E4:3/2 | G4:3/4 A4:1/4 G4:1/2 E4:3/2 | D5:1 D5:1/2 B4:3/2 | C5:1 C5:1/2 G4:3/2 |
+A4:1 A4:1/2 C5:3/4 B4:1/4 A4:1/2 | G4:3/4 A4:1/4 G4:1/2 E4:3/2 | A4:1 A4:1/2 C5:3/4 B4:1/4 A4:1/2 | G4:3/4 A4:1/4 G4:1/2 E4:3/2 |
+D5:1 D5:1/2 F5:3/4 D5:1/4 B4:1/2 | C5:3/2 E5:3/2 | C5:3/4 G4:1/4 E4:1/2 G4:3/4 F4:1/4 D4:1/2 | C4:3 |
+== holdout: When the Saints
+key=C:maj bpm=120 meter=4/4
+-:1 C4:1 E4:1 F4:1 | G4:4 | -:1 C4:1 E4:1 F4:1 | G4:4 | -:1 C4:1 E4:1 F4:1 | G4:2 E4:2 | C4:2 E4:2 | D4:4 |
+E4:1 E4:1 D4:1 C4:1 | C4:2 E4:2 | G4:2 G4:1 F4:1 | F4:3 -:1 | E4:2 F4:2 | G4:2 E4:2 | C4:2 D4:2 | C4:4 |
+== holdout: Joy to the World
+key=C:maj bpm=110 meter=2/4
+C5:1 B4:3/4 A4:1/4 | G4:3/2 F4:1/2 | E4:1 D4:1 | C4:3/2 G4:1/2 | A4:3/2 A4:1/2 | B4:3/2 B4:1/2 | C5:2 |
+== holdout: Brahms Lullaby
+key=C:maj bpm=90 meter=3/4 pickup=1
+E4:1/2 E4:1/2 | G4:2 E4:1/2 E4:1/2 | G4:2 E4:1/2 G4:1/2 | C5:1 B4:1 A4:1 | A4:1 G4:1 D4:1/2 E4:1/2 |
+F4:2 D4:1/2 E4:1/2 | F4:2 D4:1/2 F4:1/2 | B4:1/2 A4:1/2 G4:1 B4:1 | C5:2
+== holdout: Oh Susanna
+key=C:maj bpm=120 meter=2/4 pickup=1/2
+C4:1/4 D4:1/4 | E4:1/2 G4:1/2 G4:3/4 A4:1/4 | G4:1/2 E4:1/2 C4:3/4 D4:1/4 | E4:1/2 E4:1/2 D4:1/2 C4:1/2 | D4:3/2 C4:1/4 D4:1/4 |
+E4:1/2 G4:1/2 G4:3/4 A4:1/4 | G4:1/2 E4:1/2 C4:3/4 D4:1/4 | E4:1/2 E4:1/2 D4:1/2 D4:1/2 | C4:3/2

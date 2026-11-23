@@ -11,7 +11,8 @@ the top left switch between the **DAW** and the **Tune Generator**.
 3. Press Ctrl+S to save.
 
 Pitch goes up, time goes right. Click the keyboard on the left to hear a pitch, or the ruler on
-top to move the playhead. Rows outside the chosen key are shaded.
+top to move the playhead. Rows outside the chosen key are shaded. While you press a key, or click
+or drag a note, its key and row light up.
 
 ### Tools
 | Tool | Key | What it does |

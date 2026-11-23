@@ -379,6 +379,41 @@ def test_sound_is_produced(daw):
     assert peak > -40
 
 
+def test_clicks_sound_at_once(daw):
+    """The sound is triggered inside the click, before the redraw, with no look-ahead added."""
+    daw.set_notes(THREE)
+    daw.js("""async () => { await Tone.start(); window.heard = []; window.redraws = 0;
+        const P = Tone.PolySynth.prototype, o = P.triggerAttackRelease;
+        P.triggerAttackRelease = function (n, d, t, v) { heard.push([t - Tone.immediate(), redraws]); return o.call(this, n, d, t, v); };
+        tunelab.store.subscribe(() => { redraws++; }); redraws = 0; }""")
+    daw.page.mouse.click(*daw.mid(1))
+    assert daw.selected() == [64]
+    r = daw.page.locator("#roll").bounding_box()
+    daw.page.mouse.click(r["x"] + 20, r["y"] + 100)
+    heard = daw.js("() => heard")
+    assert len(heard) == 2 and all(abs(late) < 0.02 for late, _ in heard)
+    assert heard[0][1] == 0, "sound comes before the redraw"
+
+
+def test_pressed_key_lights_up(daw):
+    daw.set_notes(THREE)
+    lit = lambda: daw.js("() => tunelab.roll.lit()")  # noqa: E731
+    x, y = daw.mid(1)
+    daw.page.mouse.move(x, y)
+    daw.page.mouse.down()
+    assert lit() == 64
+    daw.page.mouse.move(x, y - 2 * daw.row(), steps=4)
+    assert lit() == 66, "follows a dragged note"
+    daw.page.mouse.up()
+    daw.page.wait_for_function("tunelab.roll.lit() === null")
+    daw.page.mouse.move(daw.page.locator("#roll").bounding_box()["x"] + 20, daw.mid(0)[1])
+    daw.page.mouse.down()
+    daw.page.wait_for_timeout(250)
+    assert lit() == 60, "stays lit while held"
+    daw.page.mouse.up()
+    daw.page.wait_for_function("tunelab.roll.lit() === null")
+
+
 def test_tracks(daw):
     daw.set_notes(THREE)
     daw.page.get_by_text("Add track").click()

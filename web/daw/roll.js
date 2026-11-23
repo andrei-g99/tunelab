@@ -4,7 +4,8 @@
 import * as m from "./model.js";
 
 const KEYS_W = 58, RULER_H = 24, PAD = 14, // PAD: room left of time 0 for the resize handle
-  DRAG_PX = 4, HANDLE_W = 7;
+  DRAG_PX = 4, HANDLE_W = 7,
+  LIT_MS = 150; // a pressed key stays lit this long after release, so quick taps are visible
 const PX_MIN = 8, PX_MAX = 600, ROW_MIN = 6, ROW_MAX = 36; // px per beat, px per semitone
 const isBlack = (p) => [1, 3, 6, 8, 10].includes(p % 12);
 
@@ -49,6 +50,22 @@ export function createRoll({ scroller, store, settings, onPreview, onSeek }) {
   }
   readColors();
 
+  // ---------- lit key: the pitch being pressed with the mouse ----------
+  let lit = null, litTimer = 0;
+  function light(pitch) {
+    clearTimeout(litTimer);
+    if (pitch === lit) return;
+    lit = pitch;
+    bg.batchDraw();
+    frame.batchDraw();
+  }
+  const unlight = () => { clearTimeout(litTimer); litTimer = setTimeout(() => light(null), LIT_MS); };
+  /** Sound a pitch and light its key. Call before any other work, so the sound is not delayed. */
+  function press(pitch, vel, secs) {
+    onPreview(pitch, vel, secs);
+    light(pitch);
+  }
+
   // ---------- static drawing (visible area only) ----------
   function eachLine(f) {
     const bar = m.barTicks(s.project.meter), beat = (m.PPQ * 4) / s.project.meter[1];
@@ -73,6 +90,7 @@ export function createRoll({ scroller, store, settings, onPreview, onSeek }) {
         ctx.fillRect(KEYS_W, y, W, view.row);
         ctx.fillStyle = colors[p % 12 === 0 ? "roll-bar" : "roll-line"];
         ctx.fillRect(KEYS_W, y + view.row - 1, W, 1);
+        if (p === lit) { ctx.fillStyle = colors["note-sel"] + "33"; ctx.fillRect(KEYS_W, y, W, view.row); }
       }
       eachLine((x, c) => { ctx.fillStyle = colors[c]; ctx.fillRect(x, RULER_H, 1, H); });
     },
@@ -85,12 +103,12 @@ export function createRoll({ scroller, store, settings, onPreview, onSeek }) {
       ctx.textBaseline = "middle";
       for (let p = pitchAt(RULER_H); p >= pitchAt(H); p--) {
         const y = oy() + (127 - p) * view.row;
-        ctx.fillStyle = colors[isBlack(p) ? "key-b" : "key-w"];
+        ctx.fillStyle = colors[p === lit ? "note-sel" : isBlack(p) ? "key-b" : "key-w"];
         ctx.fillRect(0, y, KEYS_W - 1, view.row);
         ctx.fillStyle = colors["roll-bar"];
         ctx.fillRect(0, y + view.row - 0.5, KEYS_W - 1, 0.5);
         if (p % 12 === 0 || (view.row >= 14 && !isBlack(p))) {
-          ctx.fillStyle = colors["key-ink"];
+          ctx.fillStyle = colors[p === lit ? "card" : "key-ink"];
           ctx.fillText(m.pitchName(p), 30, y + view.row / 2 + 0.5);
         }
       }
@@ -235,7 +253,7 @@ export function createRoll({ scroller, store, settings, onPreview, onSeek }) {
         out = m.moveNotes(base, ids, dt, pitchAt(cy) - p0);
         for (const n of out) if (ids.has(n.id)) place(rects.get(n.id), n);
         const now = out.find((n) => n.id === hit.id).pitch;
-        if (now !== lastPitch) { lastPitch = now; onPreview(now, hit.vel, 0.15); }
+        if (now !== lastPitch) { lastPitch = now; press(now, hit.vel, 0.15); }
         noteLayer.batchDraw();
       },
       end() {
@@ -276,8 +294,8 @@ export function createRoll({ scroller, store, settings, onPreview, onSeek }) {
       ghostNote.setAttrs({ x: ox() + start * ppt(), y: oy() + (127 - pitch) * view.row + 1, width: dur * ppt(), height: view.row - 2, visible: true });
       over.batchDraw();
     };
+    press(pitch, s.lastVel, 0.2);
     show();
-    onPreview(pitch, s.lastVel, 0.2);
     gesture = {
       kind: "draw",
       move(cx, cy, e) {
@@ -326,7 +344,7 @@ export function createRoll({ scroller, store, settings, onPreview, onSeek }) {
     const [x, y] = point(e);
     last = { x, y, e };
     if (y < RULER_H) { if (x >= KEYS_W) startSeek(x); return; }
-    if (x < KEYS_W) { onPreview(pitchAt(y), s.lastVel, 0.4); return; }
+    if (x < KEYS_W) { press(pitchAt(y), s.lastVel, 0.4); return; }
     const target = stage.getIntersection({ x, y });
     if (target?.getParent() === tr) return; // Konva handles the resize handles itself
     if (s.tool === "erase") return startErase(x, y);
@@ -334,14 +352,10 @@ export function createRoll({ scroller, store, settings, onPreview, onSeek }) {
     const additive = e.shiftKey || e.ctrlKey || e.metaKey;
     if (!hit) return s.tool === "draw" ? startDraw(x, y) : startMarquee(x, y, additive);
     const was = s.selection.has(hit.id);
-    if (additive) {
-      const ids = new Set(s.selection);
-      was ? ids.delete(hit.id) : ids.add(hit.id);
-      store.select(ids);
-      if (was) return;
-    } else if (!was) store.select([hit.id]);
-    store.set({ lastDur: hit.dur, lastVel: hit.vel });
-    onPreview(hit.pitch, hit.vel, 0.2);
+    if (additive && was) return store.select([...s.selection].filter((id) => id !== hit.id));
+    press(hit.pitch, hit.vel, 0.2);
+    const selection = was ? s.selection : new Set(additive ? [...s.selection, hit.id] : [hit.id]);
+    store.set({ selection, lastDur: hit.dur, lastVel: hit.vel }); // one change, so one redraw
     startMove(x, y, hit, was, additive);
   });
   holder.addEventListener("dblclick", (e) => {
@@ -350,6 +364,7 @@ export function createRoll({ scroller, store, settings, onPreview, onSeek }) {
     startDraw(x, y);
     const g = gesture;
     finish(g.end);
+    unlight();
   });
   window.addEventListener("pointermove", (e) => {
     if (!gesture || gesture.kind === "scale") { if (gesture) last = { e }; return; }
@@ -358,9 +373,10 @@ export function createRoll({ scroller, store, settings, onPreview, onSeek }) {
     gesture.move(x, y, e);
   });
   window.addEventListener("pointerup", (e) => {
+    if (e.button === 0) unlight();
     if (e.button === 0 && gesture && gesture.kind !== "scale") finish(gesture.end);
   });
-  const abort = () => { if (gesture) redraw(); };
+  const abort = () => { unlight(); if (gesture) redraw(); };
   window.addEventListener("pointercancel", abort);
   window.addEventListener("blur", abort);
   holder.addEventListener("contextmenu", (e) => e.preventDefault());
@@ -450,6 +466,7 @@ export function createRoll({ scroller, store, settings, onPreview, onSeek }) {
       } else layoutPlayhead();
     },
     view, // read-only use by tests
+    lit: () => lit, // used by browser tests
     originX: ox, // x of time 0 inside the roll, used by browser tests
     /** Screen rectangle of a note inside the roll, used by browser tests. */
     noteBox(id) { const r = rects.get(id)?.getClientRect({ skipStroke: true }); return r && { ...r }; },

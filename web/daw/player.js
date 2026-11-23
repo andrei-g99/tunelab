@@ -61,8 +61,8 @@ export function createPlayer({ store, onFrame, onState }) {
     const notesChanged = !project || p.bpm !== project.bpm || p.tracks.length !== project.tracks.length
       || p.tracks.some((t, i) => t.notes !== project.tracks[i].notes || t.id !== project.tracks[i].id);
     project = p;
+    syncVoices(p); // also when stopped, so that the first note does not wait for a synth to be built
     if (!playing()) return;
-    syncVoices(p);
     transport.bpm.value = p.bpm;
     if (notesChanged) schedule(p);
   }
@@ -94,10 +94,9 @@ export function createPlayer({ store, onFrame, onState }) {
     const end = projectEnd(project);
     if (!end) return;
     if (position >= end) position = 0;
-    syncVoices(project);
     transport.bpm.value = project.bpm;
     schedule(project);
-    transport.start("+0.05", `${position}i`);
+    transport.start("+0.01", `${position}i`);
     active = true;
     onState(true);
     raf = requestAnimationFrame(frame);
@@ -112,10 +111,11 @@ export function createPlayer({ store, onFrame, onState }) {
       if (playing()) { hush(); transport.ticks = tick; }
       onFrame(tick);
     },
+    /** Sound one note as soon as possible. Waits only if the browser has not started audio yet. */
     async preview(trackId, pitch, vel, secs) {
-      await Tone.start();
-      syncVoices(store.state.project);
-      voices.get(trackId)?.synth.triggerAttackRelease(freq(pitch), secs, Tone.now(), vel / 127);
+      if (Tone.getContext().state !== "running") await Tone.start();
+      // immediate(), because now() adds the look-ahead as latency
+      voices.get(trackId)?.synth.triggerAttackRelease(freq(pitch), secs, Tone.immediate(), vel / 127);
     },
   };
 }

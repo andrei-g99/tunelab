@@ -70,6 +70,10 @@ pitch 127.
 **Playback.** The transport counts in DAW ticks. Note or tempo changes while playing reschedule
 everything. `active` is our own flag because the transport starts slightly in the future.
 
+**Click latency.** A preview sounds inside the click handler, before any redraw (`press` in
+`roll.js`), at `Tone.immediate()`. `Tone.now()` would add the 0.1 s look-ahead. Keep the look-ahead
+itself: at 0.05 s notes came late when editing a dense project during playback.
+
 **Panels update in place** rather than being rebuilt, so that redraws never steal focus from a
 field being typed in. `setValue` skips the focused field.
 

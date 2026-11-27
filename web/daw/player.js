@@ -1,6 +1,6 @@
 // Playback with Tone.js. One synth per track; the Tone transport counts in our ticks.
 /* global Tone */
-import { PPQ, projectEnd } from "./model.js";
+import { PPQ, audibleTracks, noteEnd, projectEnd } from "./model.js";
 
 const SYNTHS = {
   soft: () => new Tone.PolySynth(Tone.Synth, { oscillator: { type: "triangle" }, envelope: { attack: 0.01, decay: 0.2, sustain: 0.5, release: 0.15 } }),
@@ -11,6 +11,27 @@ const SYNTHS = {
   bell: () => new Tone.PolySynth(Tone.FMSynth, { harmonicity: 3.5, modulationIndex: 8, envelope: { attack: 0.002, decay: 1.2, sustain: 0, release: 0.6 } }),
 };
 const freq = (p) => 440 * 2 ** ((p - 69) / 12);
+const TAIL = 2; // seconds of sound after the last note ends: releases and bell decay
+function makeSynth(sound, destination) {
+  const synth = SYNTHS[sound]().connect(destination);
+  synth.maxPolyphony = 64;
+  return synth;
+}
+
+/** Mono samples of some tracks of p, sounding as playback does (sound, volume, velocity, tempo).
+ * Starts at the project's start and ends TAIL seconds after the tracks' last note. */
+export async function render(p, tracks, sampleRate = 44100) {
+  const perTick = 60 / p.bpm / PPQ;
+  const end = Math.max(0, ...tracks.flatMap((t) => t.notes.map(noteEnd)));
+  const buffer = await Tone.Offline(() => {
+    const limiter = new Tone.Limiter(-1).toDestination();
+    for (const t of tracks) {
+      const synth = makeSynth(t.sound, new Tone.Volume(t.volume).connect(limiter));
+      for (const n of t.notes) synth.triggerAttackRelease(freq(n.pitch), Math.max(0.02, n.dur * perTick), n.start * perTick, n.vel / 127);
+    }
+  }, end * perTick + TAIL, 1, sampleRate);
+  return buffer.getChannelData(0);
+}
 
 export function createPlayer({ store, onFrame, onState }) {
   const transport = Tone.getTransport();
@@ -23,7 +44,7 @@ export function createPlayer({ store, onFrame, onState }) {
   const playing = () => active;
 
   function syncVoices(p) {
-    const solo = p.tracks.some((t) => t.solo);
+    const audible = new Set(audibleTracks(p));
     const alive = new Set();
     for (const t of p.tracks) {
       alive.add(t.id);
@@ -31,12 +52,11 @@ export function createPlayer({ store, onFrame, onState }) {
       if (v && v.sound !== t.sound) { drop(t.id); v = null; }
       if (!v) {
         const gain = new Tone.Volume(0).connect(limiter);
-        const synth = SYNTHS[t.sound]().connect(gain);
-        synth.maxPolyphony = 64;
+        const synth = makeSynth(t.sound, gain);
         voices.set(t.id, (v = { sound: t.sound, synth, gain }));
       }
       v.gain.volume.value = t.volume;
-      v.gain.mute = t.muted || (solo && !t.solo);
+      v.gain.mute = !audible.has(t);
     }
     for (const id of [...voices.keys()]) if (!alive.has(id)) drop(id);
   }
@@ -101,8 +121,23 @@ export function createPlayer({ store, onFrame, onState }) {
     onState(true);
     raf = requestAnimationFrame(frame);
   }
+  const held = new Map(); // what is sounding by hand: any id -> {trackId, pitch}
+  function release(id) {
+    const h = held.get(id);
+    held.delete(id);
+    if (h) voices.get(h.trackId)?.synth.triggerRelease(freq(h.pitch), Tone.immediate());
+  }
   return {
-    playing, update,
+    playing, update, release,
+    /** Sound a note until release(id). */
+    async press(id, trackId, pitch, vel) {
+      release(id);
+      const note = { trackId, pitch };
+      held.set(id, note);
+      if (Tone.getContext().state !== "running") await Tone.start();
+      if (held.get(id) !== note) return; // released while the audio was starting
+      voices.get(trackId)?.synth.triggerAttack(freq(pitch), Tone.immediate(), vel / 127);
+    },
     toggle: () => (playing() ? halt(Math.round(transport.ticks)) : play()),
     stop: () => halt(0),
     position: () => Math.round(position),

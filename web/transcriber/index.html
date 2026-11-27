@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tunelab Melody Transcriber</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/web/shared/base.css">
+<link rel="stylesheet" href="/web/transcriber/transcriber.css">
+</head>
+<body>
+<header class="app">
+  <h1>Tunelab</h1>
+  <nav><a href="/daw">DAW</a><a href="/generator">Tune Generator</a><a href="/transcriber" aria-current="page">Melody Transcriber</a></nav>
+  <span class="grow"></span>
+  <label>Volume <input type="range" id="vol" min="0" max="1" step="0.01" value="0.6"></label>
+</header>
+<main>
+  <section class="panel">
+    <h2>Record what a browser is playing</h2>
+    <div class="row">
+      <select id="stream" aria-label="Browser to record"></select>
+      <button id="refresh">Refresh</button>
+      <button id="record" class="primary">Record</button>
+      <span id="time">0:00</span>
+      <span id="meter" role="meter" aria-label="Level" aria-valuemin="0" aria-valuemax="100"><span></span></span>
+    </div>
+    <p id="message" role="status"></p>
+    <div class="row">
+      <button id="original" disabled>Play original</button>
+      <button id="again" disabled>Guess again</button>
+      <button id="guide-toggle" disabled title="Highlight the melody in a picture of the recording">Guide it myself</button>
+      <button id="keep" disabled>Keep recording</button>
+      <span class="grow"></span>
+      <select id="kept" aria-label="Kept recordings"></select>
+      <button id="open">Open</button>
+    </div>
+  </section>
+  <section id="guide" class="panel" aria-label="Guide it myself" hidden>
+    <div class="row">
+      <button data-tool="melody" title="The melody is here (B)">Melody</button>
+      <button data-tool="not" title="The melody is not here (N)">Not melody</button>
+      <button data-tool="erase" title="Remove highlights (E)">Erase</button>
+      <label title="Brush height in semitones">Brush <input type="range" id="g-size" min="0.5" max="12" step="0.5" value="3"> <span id="g-size-text">±3</span></label>
+      <button id="g-undo" title="Ctrl+Z">Undo</button>
+      <button id="g-redo" title="Ctrl+Shift+Z">Redo</button>
+      <button id="g-clear">Clear</button>
+      <span class="grow"></span>
+      <span id="g-where" class="meta"></span>
+      <button id="g-out" aria-label="Zoom out" title="Ctrl+wheel; Alt+wheel zooms pitch">−</button>
+      <button id="g-in" aria-label="Zoom in" title="Ctrl+wheel; Alt+wheel zooms pitch">+</button>
+      <button id="g-fit">Fit</button>
+    </div>
+    <div class="row">
+      <label>Source <select id="g-source"></select></label>
+      <label>Show <select id="g-view"><option value="strength">Melody strength</option><option value="spectrum">Spectrogram</option></select></label>
+      <label>with <select id="g-guess-shown"><option value="-1">No guess</option></select></label>
+      <button id="g-play" title="From the cursor (Space)">Play source</button>
+      <button id="g-hear" title="Only the sound inside the highlights">Hear highlighted</button>
+    </div>
+    <div id="g-scroll"><div id="g-space"><canvas id="g-canvas"></canvas></div></div>
+    <div class="row">
+      <button id="g-guess" class="primary">Guess from highlights</button>
+      <label><input type="checkbox" id="g-only"> Only use what I painted</label>
+      <p id="g-message" role="status"></p>
+    </div>
+  </section>
+  <section id="results"></section>
+</main>
+<script type="module" src="/web/transcriber/transcriber.js"></script>
+</body>
+</html>

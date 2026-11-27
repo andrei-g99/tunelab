@@ -3,7 +3,7 @@ import { createRequire } from "node:module";
 import { test } from "node:test";
 import { projectFromMidi, projectToMidi } from "../../web/daw/midi.js";
 import { createNote, createProject, createTrack, moveNotes } from "../../web/daw/model.js";
-import { ACTIONS, RESERVED, conflict, effectiveKeys, keyFromEvent, prettyKey } from "../../web/daw/shortcuts.js";
+import { ACTIONS, BLACK_KEYS, OCTAVE_MAX, OCTAVE_MIN, RESERVED, WHITE_KEYS, conflict, effectiveKeys, isPianoKey, keyFromEvent, pianoPitch, prettyKey } from "../../web/daw/shortcuts.js";
 import { createStore } from "../../web/daw/store.js";
 import { alignToBar, retempo, stretchProject, suggestTempos, tapTempo } from "../../web/daw/tempo.js";
 
@@ -86,4 +86,17 @@ test("shortcuts: defaults are unique and not reserved", () => {
   assert.equal(keyFromEvent(ev({ metaKey: true }), true), "$mod+KeyS");
   assert.equal(keyFromEvent({ code: "ShiftLeft", key: "Shift", shiftKey: true }), null);
   assert.equal(prettyKey("$mod+Shift+KeyZ"), "Ctrl + Shift + Z");
+});
+
+test("piano keys: layout, range, and the keys that control it stay free", () => {
+  const row = (keys) => keys.map(([code]) => prettyKey(code)).join("");
+  assert.equal(row(WHITE_KEYS), "ASDFGHJKL;'");
+  assert.equal(row(BLACK_KEYS), "QWRTYOP]");
+  const all = [...WHITE_KEYS, ...BLACK_KEYS];
+  assert.deepEqual(all.map(([c]) => pianoPitch(c, 4)).sort((a, b) => a - b), Array.from({ length: 19 }, (_, i) => 60 + i));
+  for (const [c, n] of all) assert.equal([1, 3, 6, 8, 10].includes(n % 12), BLACK_KEYS.some(([b]) => b === c));
+  for (const [c] of all) assert.ok(pianoPitch(c, OCTAVE_MIN) >= 0 && pianoPitch(c, OCTAVE_MAX) <= 127);
+  assert.equal(pianoPitch("KeyE", 4), null);
+  assert.ok(isPianoKey("KeyE") && !isPianoKey("KeyZ"));
+  for (const id of ["piano", "pianoDown", "pianoUp", "play", "stop"]) assert.ok(!isPianoKey(effectiveKeys()[id]), id);
 });

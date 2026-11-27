@@ -5,6 +5,7 @@ import * as m from "./model.js";
 import { createFiles } from "./files.js";
 import { createLibrary } from "./library.js";
 import { createInspector, createToolbar, createTrackList } from "./panels.js";
+import { createPiano } from "./piano.js";
 import { createPlayer } from "./player.js";
 import { createRoll } from "./roll.js";
 import { createSettings } from "./settings.js";
@@ -82,6 +83,9 @@ const actions = {
   zoomIn: () => roll.zoomX(1.25),
   zoomOut: () => roll.zoomX(0.8),
   zoomFit: () => roll.fit(),
+  piano: () => piano.toggle(),
+  pianoDown: () => piano.shift(-1),
+  pianoUp: () => piano.shift(1),
   tools: () => tools.open(),
   settings: () => settings.open(),
 };
@@ -97,12 +101,14 @@ store.subscribe(() => player.update(s.project));
 
 // ---------- keyboard ----------
 const TEXT = "input:not([type=checkbox]):not([type=range]):not([type=file]), textarea";
+const piano = createPiano({ store, player, roll, typing: (e) => e.target.matches?.(`${TEXT}, select`) });
 let unbind = () => {};
 function bindKeys(overrides) {
   unbind();
   const keys = effectiveKeys(overrides);
   const map = {};
-  for (const a of ACTIONS) {
+  // keys the user chose come last, so that they win over the default of a newer action
+  for (const a of [...ACTIONS].sort((x, y) => (x.id in overrides) - (y.id in overrides))) {
     map[keys[a.id]] = (e) => {
       if (e.repeat && !a.repeat) return e.preventDefault();
       if (document.querySelector("dialog[open]")) { if (a.id === "save" || a.id === "open") e.preventDefault(); return; }
@@ -141,6 +147,8 @@ on("#b-saveas", files.saveAs);
 on("#b-savemelody", files.saveMelody);
 on("#b-exp-project", () => files.exportProject());
 on("#b-exp-midi", () => files.exportMidi());
+on("#b-exp-mp3", () => files.exportAudio("mp3"));
+on("#b-exp-wav", () => files.exportAudio("wav"));
 on("#b-exp-melody", files.exportMelody);
 on("#b-exp-text", files.exportText);
 on("#b-tools", actions.tools);

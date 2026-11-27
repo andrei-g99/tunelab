@@ -1,5 +1,6 @@
 // The Tune Generator page: generate batches, review flagged tunes, score typed melodies.
 import { $, api as request, el as make, guard } from "../shared/dom.js";
+import { voice } from "../shared/voice.js";
 
 const TICKS = 12;
 const state = { show: "flagged", batch: "" };
@@ -7,21 +8,6 @@ const state = { show: "flagged", batch: "" };
 // ---------- playback ----------
 let ctx = null, current = null;
 const spt = (t) => 60 / t.bpm / TICKS;
-
-function voice(out, midi, at, secs, gain, type) {
-  const o = ctx.createOscillator(), g = ctx.createGain();
-  o.type = type;
-  o.frequency.value = 440 * 2 ** ((midi - 69) / 12);
-  const end = at + secs;
-  const atk = Math.min(0.012, secs / 4), rel = Math.min(0.06, secs / 3);
-  g.gain.setValueAtTime(0, at);
-  g.gain.linearRampToValueAtTime(gain, at + atk);
-  g.gain.linearRampToValueAtTime(gain * 0.55, end - rel);
-  g.gain.linearRampToValueAtTime(0, end);
-  o.connect(g).connect(out);
-  o.start(at);
-  o.stop(end + 0.01);
-}
 
 function stop() {
   if (!current) return;

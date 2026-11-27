@@ -414,6 +414,103 @@ def test_pressed_key_lights_up(daw):
     daw.page.wait_for_function("tunelab.roll.lit() === null")
 
 
+def test_playing_with_the_computer_keyboard(daw):
+    daw.js("""async () => { await Tone.start(); window.heard = [];
+        const P = Tone.PolySynth.prototype;
+        for (const f of ['triggerAttack', 'triggerRelease']) { const o = P[f];
+            P[f] = function (n, t, v) { heard.push([f.slice(7), Math.round(69 + 12 * Math.log2(n / 440)), t - Tone.immediate()]); return o.call(this, n, t, v); }; } }""")
+    heard = lambda: [x[:2] for x in daw.js("() => heard.splice(0)")]  # noqa: E731
+    held = lambda: sorted(daw.js("() => tunelab.roll.held()"))  # noqa: E731
+    tool = lambda: daw.js("() => tunelab.store.state.tool")  # noqa: E731
+    kb, page = daw.page.keyboard, daw.page
+    daw.key("e")
+    assert tool() == "erase" and not heard(), "off: an ordinary shortcut"
+    daw.key("v")
+    daw.key("m")
+    assert page.locator("#piano").is_visible()
+    # a chord, with a key repeating
+    kb.down("a"), kb.down("d"), kb.down("d"), kb.down("g"), kb.down("w")
+    assert held() == [60, 63, 64, 67]
+    assert page.locator("#piano .down").count() == 4
+    kb.up("d")
+    assert held() == [60, 63, 67]
+    kb.up("a"), kb.up("g"), kb.up("w")
+    assert heard() == [["Attack", 60], ["Attack", 64], ["Attack", 67], ["Attack", 63],
+                       ["Release", 64], ["Release", 60], ["Release", 67], ["Release", 63]]
+    for k, p in (("q", 61), ("r", 66), ("t", 68), ("y", 70), ("k", 72), ("o", 73), ("p", 75), (";", 76), ("'", 77), ("]", 78)):
+        daw.key(k)
+        assert heard() == [["Attack", p], ["Release", p]], k
+    # shortcuts on these keys are off, the others work
+    for k in "eui[":
+        daw.key(k)
+    assert not heard() and tool() == "select" and not page.locator("dialog[open]").count()
+    daw.key("b")
+    assert tool() == "draw"
+    # octave: keys and the list; a held note keeps its pitch
+    kb.down("a")
+    daw.key("x")
+    kb.down("s")
+    kb.up("a"), kb.up("s")
+    assert heard() == [["Attack", 60], ["Attack", 74], ["Release", 60], ["Release", 74]]
+    page.select_option("#piano select", "2")
+    daw.key("a")
+    for _ in range(12):
+        daw.key("z")
+    daw.key("a")
+    assert page.locator("#piano [aria-label='Octave down']").is_disabled()
+    for _ in range(12):
+        daw.key("x")
+    daw.key("]")
+    assert [p for f, p in heard() if f == "Attack"] == [36, 12, 126]
+    page.select_option("#piano select", "4")
+    # the mouse, and losing the window while keys are down
+    b = page.locator("#piano [aria-label='C4']").bounding_box()
+    page.mouse.move(b["x"] + 8, b["y"] + 70)
+    page.mouse.down()
+    assert held() == [60]
+    page.mouse.move(b["x"] + 300, b["y"] - 200)
+    page.mouse.up()
+    assert held() == []
+    kb.down("a")
+    daw.js("() => window.dispatchEvent(new Event('blur'))")
+    assert held() == []
+    kb.up("a")
+    kb.down("a")
+    daw.key("m")
+    assert held() == [] and page.locator("#piano").is_hidden(), "turning it off releases"
+    kb.up("a")
+    assert [f for f, _ in heard()] == ["Attack", "Release"] * 3
+    # text fields, dialogs and combinations with Ctrl are left alone; nothing was recorded
+    daw.key("m")
+    page.fill("#bpm", "")
+    page.locator("#bpm").press("1")
+    page.locator("#bpm").press("a")
+    assert page.locator("#bpm").input_value() == "1a"
+    page.locator("#bpm").press("Escape")
+    daw.key("Control+s")
+    page.locator("dialog input").press("g")
+    page.keyboard.press("Escape")
+    assert not heard() and daw.notes() == []
+
+
+def test_keyboard_notes_are_heard_until_released(daw):
+    daw.js("() => { window.meter = new Tone.Meter(); Tone.getDestination().connect(meter); }")
+    daw.key("m")
+    daw.page.keyboard.down("a")
+    daw.page.wait_for_function("meter.getValue() > -40")
+    daw.page.wait_for_timeout(800)
+    assert daw.js("() => meter.getValue()") > -40, "still sounding"
+    daw.page.keyboard.up("a")
+    daw.page.wait_for_function("meter.getValue() < -60")
+
+
+def test_own_shortcuts_win_over_new_defaults(daw):
+    daw.page.request.put(daw.url + "/api/settings", data={"shortcuts": {"toolErase": "KeyM"}})
+    daw.open("/daw")
+    daw.key("m")
+    assert daw.js("() => tunelab.store.state.tool") == "erase" and daw.page.locator("#piano").is_hidden()
+
+
 def test_tracks(daw):
     daw.set_notes(THREE)
     daw.page.get_by_text("Add track").click()
@@ -505,6 +602,39 @@ def test_export_import(daw, tmp_path):
     p.locator("#file").set_input_files(bad)
     p.get_by_text("not a Tunelab project").wait_for()
     assert daw.js("() => tunelab.store.state.project.tracks.length") == 2
+
+
+def test_export_audio(daw, tmp_path):
+    """Audio follows tempo and mute; the active track can be exported alone."""
+    import wave
+
+    import numpy as np
+    p = daw.page
+    daw.set_notes([[60, 0, 240], [64, 960, 240]])  # at 120 BPM: 0 to 0.25 s and 1 to 1.25 s
+    daw.js("""async () => { const m = await import('/web/daw/model.js'); const s = tunelab.store, p = s.state.project;
+        s.commit({ ...p, bpm: 120, tracks: [...p.tracks, { ...m.createTrack('quiet', [m.createNote(72, 4800, 480)]), muted: true }] }); }""")
+
+    def export(button, choice):
+        p.locator("#b-more").click()
+        p.locator(button).click()
+        with p.expect_download(timeout=30000) as d:
+            p.get_by_role("button", name=choice).click()
+        f = tmp_path / d.value.suggested_filename
+        d.value.save_as(f)
+        return f
+
+    f = export("#b-exp-wav", "Whole mix, as you hear it")
+    with wave.open(str(f)) as w:
+        rate = w.getframerate()
+        x = np.frombuffer(w.readframes(w.getnframes()), dtype="<i2") / 32768
+    assert w.getnchannels() == 1 and abs(len(x) / rate - 3.25) < 0.01  # muted note at 5 s left out
+    loud = lambda a, b: np.abs(x[int(a * rate):int(b * rate)]).max()
+    assert loud(0, 0.2) > 0.05 and loud(0.6, 0.95) < 0.001 and loud(1.0, 1.2) > 0.05
+    f = export("#b-exp-mp3", 'Only "Melody"')
+    assert f.suffix == ".mp3" and f.read_bytes()[:3] == b"ID3"
+    secs = float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(f)],
+                                capture_output=True, text=True, check=True).stdout)
+    assert abs(secs - 3.25) < 0.1
 
 
 def test_melody_library_and_favorites(daw):

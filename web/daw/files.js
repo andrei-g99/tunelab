@@ -2,11 +2,15 @@
 /* global Midi */
 import * as m from "./model.js";
 import { projectFromMidi, projectToMidi } from "./midi.js";
+import { render } from "./player.js";
+import { encodeWav } from "./wav.js";
 import { ApiError, api, ask, askText, download, fileName, toast } from "../shared/dom.js";
+
+const MAX_AUDIO_MINUTES = 20;
 
 export function createFiles({ store, onOpened }) {
   const s = store.state;
-  let saving = false;
+  let saving = false, rendering = false;
 
   function open(project, file, saved) {
     store.load(project, file, saved);
@@ -143,10 +147,41 @@ export function createFiles({ store, onOpened }) {
     download(fileName(store.track().name, ".tune"), r.notation + "\n", "text/plain");
     if (r.rounded) toast("Exported. Some timing was rounded to 1/12 beat, the finest the notation allows.");
   }
+  /** Audio as heard when playing (mute and solo apply), or the active track alone. format: "mp3" or "wav". */
+  async function exportAudio(format) {
+    if (rendering) return toast("Already exporting audio, please wait.", true);
+    const what = s.project.tracks.length === 1 ? "track"
+      : await ask(`Export audio (.${format}) with this project's tempo, sounds and volumes.`,
+        [["mix", "Whole mix, as you hear it"], ["track", `Only "${store.track().name}"`], ["cancel", "Cancel"]]);
+    if (what !== "mix" && what !== "track") return;
+    const p = s.project, t = store.track(), tracks = what === "mix" ? m.audibleTracks(p) : [t];
+    if (!tracks.some((x) => x.notes.length)) return toast(what === "mix" ? "No notes can be heard. Check mute and solo." : "This track has no notes yet.", true);
+    if (m.projectSeconds({ ...p, tracks }) > MAX_AUDIO_MINUTES * 60) return toast(`Too long to export as audio (more than ${MAX_AUDIO_MINUTES} minutes).`, true);
+    const name = what === "track" && p.tracks.length > 1 ? `${p.name} - ${t.name}` : p.name;
+    rendering = true;
+    try {
+      toast("Exporting audio…");
+      const sampleRate = 44100, wav = encodeWav([await render(p, tracks, sampleRate)], sampleRate);
+      if (format === "wav") download(fileName(name, ".wav"), wav, "audio/wav");
+      else download(fileName(name, ".mp3"), await toMp3(wav, name), "audio/mpeg");
+      toast("Exported.");
+    } finally {
+      rendering = false;
+    }
+  }
+  async function toMp3(wav, title) {
+    const r = await fetch(`/api/audio/mp3?title=${encodeURIComponent(title)}`, { method: "POST", headers: { "Content-Type": "audio/wav" }, body: wav })
+      .catch(() => { throw new ApiError("Cannot reach the Tunelab server. Is it still running?", 0); });
+    if (!r.ok) {
+      const j = await r.json().catch(() => ({}));
+      throw new ApiError(typeof j.detail === "string" ? j.detail : `Request failed (${r.status})`, r.status);
+    }
+    return r.arrayBuffer();
+  }
   async function exportItem(kind, id) {
     const { doc } = await api("GET", `/api/library/${kind}/${id}`);
     download(fileName(doc.name, kind === "projects" ? ".project.json" : ".melody.json"), json(doc), "application/json");
   }
 
-  return { save, saveAs, saveMelody, newProject, openProject, openMelodyDoc, melodyById, addTracks, importFile, exportProject, exportMidi, exportMelody, exportText, exportItem };
+  return { save, saveAs, saveMelody, newProject, openProject, openMelodyDoc, melodyById, addTracks, importFile, exportProject, exportMidi, exportAudio, exportMelody, exportText, exportItem };
 }

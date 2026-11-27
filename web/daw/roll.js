@@ -52,6 +52,8 @@ export function createRoll({ scroller, store, settings, onPreview, onSeek }) {
 
   // ---------- lit key: the pitch being pressed with the mouse ----------
   let lit = null, litTimer = 0;
+  let held = new Set(); // pitches played with the computer keyboard
+  const isLit = (p) => p === lit || held.has(p);
   function light(pitch) {
     clearTimeout(litTimer);
     if (pitch === lit) return;
@@ -90,7 +92,7 @@ export function createRoll({ scroller, store, settings, onPreview, onSeek }) {
         ctx.fillRect(KEYS_W, y, W, view.row);
         ctx.fillStyle = colors[p % 12 === 0 ? "roll-bar" : "roll-line"];
         ctx.fillRect(KEYS_W, y + view.row - 1, W, 1);
-        if (p === lit) { ctx.fillStyle = colors["note-sel"] + "33"; ctx.fillRect(KEYS_W, y, W, view.row); }
+        if (isLit(p)) { ctx.fillStyle = colors["note-sel"] + "33"; ctx.fillRect(KEYS_W, y, W, view.row); }
       }
       eachLine((x, c) => { ctx.fillStyle = colors[c]; ctx.fillRect(x, RULER_H, 1, H); });
     },
@@ -103,12 +105,12 @@ export function createRoll({ scroller, store, settings, onPreview, onSeek }) {
       ctx.textBaseline = "middle";
       for (let p = pitchAt(RULER_H); p >= pitchAt(H); p--) {
         const y = oy() + (127 - p) * view.row;
-        ctx.fillStyle = colors[p === lit ? "note-sel" : isBlack(p) ? "key-b" : "key-w"];
+        ctx.fillStyle = colors[isLit(p) ? "note-sel" : isBlack(p) ? "key-b" : "key-w"];
         ctx.fillRect(0, y, KEYS_W - 1, view.row);
         ctx.fillStyle = colors["roll-bar"];
         ctx.fillRect(0, y + view.row - 0.5, KEYS_W - 1, 0.5);
         if (p % 12 === 0 || (view.row >= 14 && !isBlack(p))) {
-          ctx.fillStyle = colors[p === lit ? "card" : "key-ink"];
+          ctx.fillStyle = colors[isLit(p) ? "card" : "key-ink"];
           ctx.fillText(m.pitchName(p), 30, y + view.row / 2 + 0.5);
         }
       }
@@ -465,6 +467,9 @@ export function createRoll({ scroller, store, settings, onPreview, onSeek }) {
         layout(); // do not wait for the scroll event
       } else layoutPlayhead();
     },
+    /** Light the keys of these pitches. */
+    setHeld(pitches) { held = new Set(pitches); bg.batchDraw(); frame.batchDraw(); },
+    held: () => [...held], // used by browser tests
     view, // read-only use by tests
     lit: () => lit, // used by browser tests
     originX: ox, // x of time 0 inside the roll, used by browser tests

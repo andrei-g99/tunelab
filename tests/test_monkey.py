@@ -7,7 +7,7 @@ from test_e2e import THREE, browser, daw, server  # noqa: F401  (fixtures)
 
 KEYS = ["v", "b", "e", "Control+a", "Escape", "Control+c", "Control+x", "Control+v", "Control+d", "Delete",
         "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Shift+ArrowUp", "Shift+ArrowDown", "q", "=", "-", "f",
-        "Control+z", "Control+z", "Control+Shift+z", "Space", "Enter"]
+        "Control+z", "Control+z", "Control+Shift+z", "Space", "Enter", "m", "a", "w", "z", "x"]
 
 CHECK = """async () => {
   const m = await import('/web/daw/model.js'), s = tunelab.store, notes = s.track().notes;

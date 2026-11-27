@@ -2,6 +2,7 @@
 
     library/projects/<id>.json   library/melodies/<id>.json
     library/favorites.json       library/settings.json      library/trash/
+    library/recordings/<id>.wav  (kept by the transcriber)
 
 A file's id is its name without ".json". Ids never change; renaming changes the "name"
 inside the document. Every write is atomic, and deleting moves the file to trash/.
@@ -12,6 +13,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import tempfile
 import threading
 import time
@@ -189,3 +191,38 @@ def load_settings() -> dict:
 def save_settings(data: dict) -> None:
     with _lock:
         _write(root() / "settings.json", data)
+
+
+# ---------- kept recordings ----------
+def recording(id: str) -> Path:
+    path = root() / "recordings" / f"{id}.wav"
+    if not ID.fullmatch(id) or not path.is_file():
+        raise NotFound(f"no such recording: {id}")
+    return path
+
+
+def recordings() -> list[str]:
+    """Ids, newest first."""
+    with _lock:
+        found = [p for p in (root() / "recordings").glob("*.wav") if ID.fullmatch(p.stem)]
+        return [p.stem for p in sorted(found, key=lambda p: -p.stat().st_mtime)]
+
+
+def keep_recording(source: Path, name: str) -> str:
+    with _lock:
+        folder = root() / "recordings"
+        folder.mkdir(parents=True, exist_ok=True)
+        base = _slug(name)
+        id, n = base, 1
+        while (folder / f"{id}.wav").exists():
+            n += 1
+            id = f"{base}-{n}"
+        fd, tmp = tempfile.mkstemp(dir=folder, prefix=".tmp-")
+        try:
+            with os.fdopen(fd, "wb") as f, source.open("rb") as src:
+                shutil.copyfileobj(src, f)
+            os.replace(tmp, folder / f"{id}.wav")
+        except BaseException:
+            Path(tmp).unlink(missing_ok=True)
+            raise
+        return id

@@ -29,6 +29,9 @@ export const ACTIONS = [
   ["zoomIn", "Zoom in", "Equal", { repeat: true }],
   ["zoomOut", "Zoom out", "Minus", { repeat: true }],
   ["zoomFit", "Zoom to fit", "KeyF"],
+  ["piano", "Play notes with the keyboard on / off", "KeyM"],
+  ["pianoDown", "Keyboard notes: octave down", "KeyZ"],
+  ["pianoUp", "Keyboard notes: octave up", "KeyX"],
   ["tools", "Open Tools", "KeyT"],
   ["settings", "Open Settings", "$mod+Comma"],
 ].map(([id, label, key, opts = {}]) => ({ id, label, key, ...opts }));
@@ -37,6 +40,18 @@ export const ACTIONS = [
 export function effectiveKeys(overrides = {}) {
   return Object.fromEntries(ACTIONS.map((a) => [a.id, overrides[a.id] ?? a.key]));
 }
+
+// ---------- playing notes with the computer keyboard ----------
+/** Physical keys and their semitones above the C of the chosen octave. */
+export const WHITE_KEYS = Object.entries({ KeyA: 0, KeyS: 2, KeyD: 4, KeyF: 5, KeyG: 7, KeyH: 9, KeyJ: 11, KeyK: 12, KeyL: 14, Semicolon: 16, Quote: 17 });
+export const BLACK_KEYS = Object.entries({ KeyQ: 1, KeyW: 3, KeyR: 6, KeyT: 8, KeyY: 10, KeyO: 13, KeyP: 15, BracketRight: 18 });
+const SEMITONES = new Map([...WHITE_KEYS, ...BLACK_KEYS]);
+// keys between the black ones: silent, but they must not trigger a shortcut when hit by mistake
+const SILENT = new Set(["KeyE", "KeyU", "KeyI", "BracketLeft"]);
+export const OCTAVE_MIN = 0, OCTAVE_MAX = 8;
+export const isPianoKey = (code) => SEMITONES.has(code) || SILENT.has(code);
+/** MIDI pitch of a key, or null. */
+export const pianoPitch = (code, octave) => (SEMITONES.has(code) ? 12 * (octave + 1) + SEMITONES.get(code) : null);
 
 /** A keydown event as a key string, or null while only modifiers are held. */
 export function keyFromEvent(e, isMac = false) {

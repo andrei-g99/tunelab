@@ -12,9 +12,11 @@ plain code over clever optimizations, and an existing library over a home-made w
 - One user action is one undo step.
 - `web/vendor/` is generated. To change a version: edit `package.json`, then
   `npm install --ignore-scripts && npm run vendor`.
-- Keep the DAW and the Tune Generator separate: they share only `web/shared/` and the API.
+- Keep the DAW, the Tune Generator and the Melody Transcriber separate: they share only `web/shared/` and the API.
 - User-chosen text reaches the page through `el()`/`textContent`, never `innerHTML`.
 - Update `docs/USER_GUIDE.md` when behaviour changes, `docs/ARCHITECTURE.md` when structure does.
+  Update `docs/TEACHER_GUIDE.md` when a teacher would notice: musical conventions, how tunes are
+  generated or scored, transcription accuracy and limits, import and export.
 - Run `uv run pytest` and `npm test` before saying something works. Look at screenshots for
   visual changes: tests missed a resize handle hidden behind the keyboard.
 
@@ -38,7 +40,12 @@ preview in `move`, commit in `end`.
 **Change scoring:** edit `scorer.py`, then run `uv run tunelab-check`. Tune only on "dev" tunes;
 "holdout" is for testing.
 
+**Change transcription:** edit `transcribe.py`, then run `uv run tunelab-melody-check` on your clips.
+Tune only on "dev".
+`guide.py` searches with the same code: with nothing highlighted it must give the automatic result.
+
 ## Pitfalls
+- Never record without `NO_FALLBACK` (`capture.py`), or the microphone may be recorded.
 - Reading layout right after setting `scrollLeft` is fine, but the scroll *event* comes a frame
   later. Call `layout()` yourself.
 - `store.commitNotes` from inside a gesture's `move` would cancel that gesture.

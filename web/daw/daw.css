@@ -1,11 +1,11 @@
 html,body{height:100%}
-body{display:grid;grid-template-rows:auto auto minmax(0,1fr) auto;overflow:hidden}
+body{display:grid;grid-template-rows:auto auto minmax(0,1fr) auto auto;overflow:hidden}
 .grow{flex:1}.num{font-variant-numeric:tabular-nums;min-width:3em;display:inline-block}
 .short{width:4.5em}#mode{width:8.5em}.bar .row{gap:4px 6px}
 .bar{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;padding:6px 14px;background:var(--card);border-bottom:1px solid var(--line)}
 main{display:grid;grid-template-columns:210px minmax(0,1fr);min-height:0}
 #tracks{overflow:auto;padding:10px;border-right:1px solid var(--line);background:var(--card)}
-#b-addtrack{width:100%}
+#b-addtrack,#b-piano{width:100%}#b-piano{margin-top:8px}
 .track{border:1px solid var(--line);border-radius:6px;padding:8px;margin-bottom:8px;cursor:pointer}
 .track.active{border-color:var(--accent);box-shadow:inset 3px 0 var(--accent)}
 .track .row{gap:4px;flex-wrap:nowrap}.track .row+.row{margin-top:6px}
@@ -14,6 +14,14 @@ main{display:grid;grid-template-columns:210px minmax(0,1fr);min-height:0}
 .track button{padding:2px 7px}
 #roll{position:relative;overflow:scroll;min-width:0;background:var(--roll);touch-action:none;outline:none}
 .roll-size{position:relative}.roll-holder{position:sticky;top:0;left:0;width:0;height:0}
+#piano{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;padding:8px 14px;background:var(--card);border-top:1px solid var(--line);overflow-x:auto}
+#piano[hidden]{display:none}
+.keyboard{position:relative;display:flex;height:84px;padding-right:15px;touch-action:none}
+.keyboard button{display:flex;flex-direction:column;justify-content:flex-end;align-items:center;padding:0 0 4px;font-size:12px;line-height:1.25;user-select:none}
+.keyboard .white{width:44px;border-color:var(--roll-bar);border-radius:0 0 4px 4px;background:var(--key-w);color:#39444c}
+.keyboard .black{position:absolute;top:0;width:28px;height:50px;margin-left:-14px;border-color:#0e1113;border-radius:0 0 4px 4px;background:#39444c;color:#fff}
+.keyboard .down,.keyboard .down.black{background:var(--note-sel);color:#1c2329}
+.keyboard .note{font-size:10px;opacity:.75}
 #inspector{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;padding:6px 14px;min-height:43px;background:var(--card);border-top:1px solid var(--line)}
 #inspector input{width:6em}
 #more{border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);padding:6px;margin:0;inset:auto}

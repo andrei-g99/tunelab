@@ -65,14 +65,19 @@ def clean(y: np.ndarray) -> np.ndarray:
 COMPRESS, SUB_OCT, SUB_TWELFTH, HEIGHT, JUMP = 0.5, 0.0, 0.0, 0.03, 0.06
 
 
-def salience(y: np.ndarray, lo: int, hi: int) -> np.ndarray:
-    """(frames x candidate pitches in thirds of a semitone)"""
+def spectrum(y: np.ndarray) -> np.ndarray:
+    """(pitches in thirds of a semitone, upwards from F_LOW x frames), 0..1, in the recording's own tuning"""
     tuning = float(librosa.estimate_tuning(y=y, sr=SR))
     n_bins = BPO * 7 + 6  # just over seven octaves, safely below Nyquist
     c = np.abs(librosa.cqt(y, sr=SR, hop_length=HOP, fmin=librosa.midi_to_hz(F_LOW),
                            n_bins=n_bins, bins_per_octave=BPO, tuning=tuning * BPO / 12))
-    c = (c / (c.max() + 1e-9)) ** COMPRESS  # compress, so loud bass doesn't drown the lead
-    per = BPO // 12
+    return (c / (c.max() + 1e-9)) ** COMPRESS  # compress, so loud bass doesn't drown the lead
+
+
+def salience(y: np.ndarray, lo: int, hi: int, anchor: int | None = None) -> np.ndarray:
+    """(frames x candidate pitches in thirds of a semitone). anchor: the pitch with neutral weight, or lo."""
+    c = spectrum(y)
+    n_bins, per = len(c), BPO // 12
     cands = np.arange((lo - F_LOW) * per, (hi - F_LOW) * per + 1)
     sal = np.zeros((c.shape[1], len(cands)))
     for h in range(1, 7):
@@ -85,7 +90,7 @@ def salience(y: np.ndarray, lo: int, hi: int) -> np.ndarray:
         ok = idx >= 0
         sal[:, ok] -= w * c[idx[ok]].T
     # a lead line usually sits above its accompaniment
-    return np.maximum(sal, 0) * (1 + HEIGHT * (cands / per - (lo - F_LOW)))
+    return np.maximum(sal, 0) * (1 + HEIGHT * (cands / per - ((lo if anchor is None else anchor) - F_LOW)))
 
 
 def melody_path(sal: np.ndarray) -> np.ndarray:
@@ -109,7 +114,14 @@ def melody_path(sal: np.ndarray) -> np.ndarray:
 
 def segment(y: np.ndarray, lo: int, hi: int) -> list[tuple[float, float, int]]:
     """(start seconds, end seconds, MIDI pitch)"""
-    sal = salience(y, lo, hi)
+    return notes_from_salience(y, salience(y, lo, hi), lo)
+
+
+def notes_from_salience(y: np.ndarray, sal: np.ndarray, lo: int,
+                        allowed: np.ndarray | None = None) -> list[tuple[float, float, int]]:
+    """allowed: where notes may be, same shape as sal; nothing is found elsewhere."""
+    if allowed is not None:
+        sal = sal * allowed
     path = melody_path(sal)
     pitch = np.rint(lo + path / (BPO // 12)).astype(int)
     pitch = median_filter(pitch, size=7)
@@ -117,7 +129,10 @@ def segment(y: np.ndarray, lo: int, hi: int) -> list[tuple[float, float, int]]:
     rms = librosa.feature.rms(y=y, hop_length=HOP)[0]
     n = min(len(rms), len(strength))
     pitch, strength, rms = pitch[:n], strength[:n], rms[:n]
-    voiced = (strength > 0.35 * np.percentile(strength, 90)) & (rms > 0.05 * np.percentile(rms, 95))
+    heard = strength if allowed is None else strength[strength > 0]  # else a small area would count as silence
+    if not len(heard):
+        return []
+    voiced = (strength > 0.35 * np.percentile(heard, 90)) & (rms > 0.05 * np.percentile(rms, 95))
 
     onset_env = librosa.onset.onset_strength(y=y, sr=SR, hop_length=HOP)
     onsets = set(librosa.onset.onset_detect(onset_envelope=onset_env, sr=SR, hop_length=HOP,

@@ -1,4 +1,4 @@
-// Small helpers shared by both tools.
+// Small helpers shared by all tools.
 export const $ = (sel, root = document) => root.querySelector(sel);
 
 /** el("button", {class: "x", onclick: f}, "text", childNode) */

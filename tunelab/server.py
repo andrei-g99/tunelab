@@ -1,6 +1,7 @@
-"""Assembles the local web app. Serves two tools: the DAW and the Tune Generator."""
+"""Assembles the local web app. Serves three tools: DAW, Tune Generator, Melody Transcriber."""
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 import uvicorn
@@ -9,16 +10,24 @@ from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from . import library, routes_daw, routes_generator
+from . import library, routes_daw, routes_generator, routes_transcriber
 
 WEB = Path(__file__).resolve().parent.parent / "web"
 HOST, PORT = "127.0.0.1", 8321
 
-app = FastAPI(title="tunelab")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    yield
+    routes_transcriber.session.close()  # stop recording and delete the temporary audio
+
+
+app = FastAPI(title="tunelab", lifespan=lifespan)
 # refuse requests that reach us under a foreign host name (DNS rebinding)
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost", "testserver"])
 app.include_router(routes_generator.router)
 app.include_router(routes_daw.router)
+app.include_router(routes_transcriber.router)
 
 
 @app.middleware("http")
@@ -48,6 +57,11 @@ def daw():
 @app.get("/generator")
 def generator():
     return FileResponse(WEB / "generator" / "index.html")
+
+
+@app.get("/transcriber")
+def transcriber():
+    return FileResponse(WEB / "transcriber" / "index.html")
 
 
 app.mount("/web", StaticFiles(directory=WEB), name="web")

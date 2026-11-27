@@ -126,3 +126,33 @@ def test_pages_and_host_check(client):
         assert r.status_code == 200 and "cache-control" in r.headers
     assert client.get("/").url.path == "/daw"
     assert client.get("/api/library", headers={"host": "evil.example"}).status_code == 400
+
+
+def _wav(seconds=0.5, rate=8000):
+    import io
+    import math
+    import struct
+    import wave
+    out = io.BytesIO()
+    with wave.open(out, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(rate)
+        w.writeframes(b"".join(struct.pack("<h", int(8000 * math.sin(i / 10))) for i in range(int(seconds * rate))))
+    return out.getvalue()
+
+
+@pytest.mark.skipif(not __import__("shutil").which("ffmpeg"), reason="needs ffmpeg")
+def test_mp3_export(client, monkeypatch):
+    from tunelab import routes_daw
+    r = client.post("/api/audio/mp3?title=My%20Song", content=_wav(), headers={"Content-Type": "audio/wav"})
+    assert r.status_code == 200 and r.headers["content-type"] == "audio/mpeg"
+    assert r.content[:3] == b"ID3" and b"My Song" in r.content[:200]
+    assert client.post("/api/audio/mp3", content=b"not audio").status_code == 422
+    assert client.post("/api/audio/mp3", content=_wav(), headers={"Origin": "https://example.com"}).status_code == 403
+    monkeypatch.setattr(routes_daw, "MAX_WAV", 100)
+    assert client.post("/api/audio/mp3", content=_wav()).status_code == 413
+    monkeypatch.setattr(routes_daw.shutil, "which", lambda _: None)
+    monkeypatch.setattr(routes_daw, "MAX_WAV", 10**9)
+    r = client.post("/api/audio/mp3", content=_wav())
+    assert r.status_code == 503 and "WAV" in r.json()["detail"]

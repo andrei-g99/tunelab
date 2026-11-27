@@ -1,15 +1,22 @@
-"""HTTP API of the DAW: library files, settings, notation conversion, scoring."""
+"""HTTP API of the DAW: library files, settings, notation conversion, scoring, MP3 encoding."""
 from __future__ import annotations
 
+import shutil
+import subprocess
+import tempfile
+from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import Response
 from pydantic import BaseModel, Field, ValidationError
 
 from . import library
 from .documents import ConversionError, MelodyDoc, melody_from_tune, tune_from_melody
 from .library import Kind
 from .notation import NotationError, dump, parse
+from .routes_transcriber import same_origin
 from .scorer import score
 
 router = APIRouter(prefix="/api")
@@ -125,3 +132,36 @@ def score_melody(m: MelodyDoc):
         raise HTTPException(400, str(e)) from None
     s, parts = score(tune)
     return {"score": s if parts else None, "parts": parts, "notation": dump(tune), "rounded": rounded}
+
+
+MAX_WAV = 128 * 1024 * 1024  # about 25 minutes of the mono 16-bit audio the DAW sends
+
+
+def wav_to_mp3(wav: bytes, title: str) -> bytes:
+    if shutil.which("ffmpeg") is None:
+        raise HTTPException(503, "MP3 export needs ffmpeg, which is not installed. Export as WAV instead.")
+    title = "".join(c for c in title if c.isprintable())
+    # to a file, not a pipe: only then can ffmpeg write the header that gives players the duration
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp) / "out.mp3"
+        cmd = ["ffmpeg", "-v", "error", "-nostdin", "-f", "wav", "-i", "pipe:0", "-codec:a", "libmp3lame",
+               "-q:a", "2", "-metadata", f"title={title}", str(out)]
+        try:
+            r = subprocess.run(cmd, input=wav, capture_output=True, timeout=300)
+        except subprocess.TimeoutExpired:
+            raise HTTPException(504, "Converting to MP3 took too long.") from None
+        if r.returncode or not out.exists():
+            raise HTTPException(422, f"Could not convert to MP3: {r.stderr.decode(errors='replace').strip()[-300:]}")
+        return out.read_bytes()
+
+
+@router.post("/audio/mp3", dependencies=[Depends(same_origin)])
+async def mp3(request: Request, title: Annotated[str, Query(max_length=200)] = ""):
+    """WAV in, MP3 out. The DAW renders the audio itself, with the sounds it plays."""
+    too_long = HTTPException(413, "Too long to export as audio.")
+    if int(request.headers.get("content-length") or 0) > MAX_WAV:
+        raise too_long
+    wav = await request.body()
+    if len(wav) > MAX_WAV:
+        raise too_long
+    return Response(await run_in_threadpool(wav_to_mp3, wav, title), media_type="audio/mpeg")

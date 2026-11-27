@@ -5,10 +5,22 @@ description = "Programmatic melody exploration: generate, score, flag, listen"
 requires-python = ">=3.11"
 dependencies = ["fastapi", "uvicorn", "numpy", "scipy", "librosa"]
 
+[project.optional-dependencies]
+# neural models of the Melody Transcriber; without them it uses tunelab/extract.py only
+gpu = [
+    "torch; sys_platform == 'linux'",
+    "torchaudio; sys_platform == 'linux'",
+    "audio-separator; sys_platform == 'linux'",
+    "audioread; sys_platform == 'linux'",
+    "beat-this; sys_platform == 'linux'",
+    "onnxruntime-gpu<1.24; sys_platform == 'linux'",  # 1.24 and later need CUDA 13
+]
+
 [project.scripts]
 tunelab = "tunelab.server:main"
 tunelab-extract = "tunelab.extract:main"
 tunelab-check = "tunelab.check:main"
+tunelab-melody-check = "tunelab.melody_check:main"
 
 [dependency-groups]
 dev = [
@@ -23,3 +35,12 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["tunelab"]
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu126", extra = "gpu" }
+torchaudio = { index = "pytorch-cu126", extra = "gpu" }
+
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true

@@ -94,3 +94,12 @@ test("text parsing", () => {
   assert.equal(m.parseBeats("-1"), null);
   for (let p = 0; p < 128; p++) assert.equal(m.parsePitch(m.pitchName(p)), p);
 });
+
+test("audible tracks: mute, then solo; projectSeconds follows the tempo", () => {
+  const t = (name, extra) => ({ ...m.createTrack(name, [N(60, 0, 960)]), ...extra });
+  const tracks = [t("a"), t("b", { muted: true }), t("c", { solo: true }), t("d", { solo: true, muted: true })];
+  const p = m.createProject("P", { tracks, bpm: 120 });
+  assert.deepEqual(m.audibleTracks(p).map((x) => x.name), ["c"]);
+  assert.deepEqual(m.audibleTracks({ ...p, tracks: tracks.slice(0, 2) }).map((x) => x.name), ["a"]);
+  assert.equal(m.projectSeconds(p), 1); // two beats at 120 BPM
+});

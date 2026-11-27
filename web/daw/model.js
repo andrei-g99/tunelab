@@ -72,6 +72,13 @@ export const projectFromMelody = (d) =>
 // ---------- reading ----------
 export const projectEnd = (p) => p.tracks.reduce((m, t) => t.notes.reduce((k, n) => Math.max(k, noteEnd(n)), m), 0);
 export const pick = (notes, ids) => notes.filter((n) => ids.has(n.id));
+/** Tracks that sound when playing: not muted and, if any track is solo, solo. */
+export function audibleTracks(p) {
+  const solo = p.tracks.some((t) => t.solo);
+  return p.tracks.filter((t) => !t.muted && (!solo || t.solo));
+}
+/** Seconds from the start to the end of the last note. */
+export const projectSeconds = (p) => (projectEnd(p) / PPQ) * (60 / p.bpm);
 
 /** {start, end, low, high} of some notes, or null when there are none. */
 export function bounds(notes) {
